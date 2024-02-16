@@ -35,7 +35,7 @@ describe("SaveERC20", function () {
        await saveERC20.connect(owner).deposit(amountToDeposit);
 
 
-       // expect(await saveERC20.connect(owner).deposit(amountToDeposit)).to.revertedWith("cannot save zero value");
+        expect(await saveERC20.connect(owner).deposit(amountToDeposit)).to.revertedWith("cannot save zero value");
 
         // Check if the user's savings have increased
         const userBalance = await saveERC20.checkUserBalance(saveERC20.getAddress());
@@ -45,10 +45,18 @@ describe("SaveERC20", function () {
         const contractBalance = await saveERC20.checkContractBalance();
         expect(contractBalance).to.equal(userBalance);
 
-    //   it("should deposit tokens into the contract", async function () {
-        
-    //   });
+    
      
     });
+
+    it("should check user balance", async function(){
+        const { saveERC20, owner, cov } = await loadFixture(
+            deploySaveERC20
+          );
+        const balance = await saveERC20.checkUserBalance(owner);
+
+        expect(balance).to.equal(0);
+      });
+    
   });
 });
