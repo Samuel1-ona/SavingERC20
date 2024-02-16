@@ -6,37 +6,49 @@ describe("SaveERC20", function () {
   async function deploySaveERC20() {
     const [owner, account1, account2] = await ethers.getSigners();
 
-    const SaveERC20 = await ethers.getContractFactory("SaveERC20");
-    const saveERC20 = await SaveERC20.deploy(owner.address);
-    const amountToDeposit = ethers.parseEther("100000");
+    const Cov = await ethers.getContractFactory("Coval");
+    const cov = await Cov.deploy();
 
-    return { saveERC20, owner, account1, account2, amountToDeposit };
+    const SaveERC20 = await ethers.getContractFactory("SaveERC20");
+    const saveERC20 = await SaveERC20.deploy(cov.getAddress());
+   
+
+
+
+    return { saveERC20, owner, cov };
   }
 
-  describe("Checking contract balance", function () {
-    it("should withdraw tokens to the owner", async function () {
-      const { saveERC20, owner, amountToDeposit } = await loadFixture(deploySaveERC20);
+  describe("depositing into the contract", function () {
+    it("should deposit tokens to the owner", async function () {
+      const { saveERC20, owner, cov } = await loadFixture(
+        deploySaveERC20
+      );
 
-      it("should deposit tokens into the contract", async function () {
-        const savingToken = "0x925c814D19000E9686eAd37B5dB3cf0815622C9E" 
-        const amountToDeposit = ethers.parseEther("5");
-        
+      const savingToken = saveERC20
+        const amountToDeposit = ethers.parseEther("1");
+
         // Approve SaveERC20 contract to transfer tokens
         const Token = await ethers.getContractAt("IERC20", savingToken);
-        await Token.approve(owner.address, amountToDeposit);
-    
+        await cov.connect(owner).approve(saveERC20.getAddress(), amountToDeposit);
+
         // Deposit tokens into the contract
-        await saveERC20.deposit(amountToDeposit);
-    
+       await saveERC20.connect(owner).deposit(amountToDeposit);
+
+
+       // expect(await saveERC20.connect(owner).deposit(amountToDeposit)).to.revertedWith("cannot save zero value");
+
         // Check if the user's savings have increased
-        const userBalance = await saveERC20.checkUserBalance(owner.address);
+        const userBalance = await saveERC20.checkUserBalance(saveERC20.getAddress());
         expect(userBalance).to.equal(amountToDeposit);
-    
-        // Check if the contract's balance matches the deposited amount
+
+        // // Check if the contract's balance matches the deposited amount
         const contractBalance = await saveERC20.checkContractBalance();
-        expect(contractBalance).to.equal(amountToDeposit);
-      });
-    
+        expect(contractBalance).to.equal(userBalance);
+
+    //   it("should deposit tokens into the contract", async function () {
+        
+    //   });
+     
     });
   });
 });
