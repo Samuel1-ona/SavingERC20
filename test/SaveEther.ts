@@ -120,14 +120,11 @@ describe("SaveERC20", function () {
       
       expect(userBalance).to.equal(amountToDeposit);
 
-         await saveERC20.connect(account1).withdraw(2);
-
-         const finalTokenBalance = await cov.balanceOf(account1.address);
-
-         await expect(finalTokenBalance).to.revertedWith("insufficient funds");
+      await expect(saveERC20.connect(account1).withdraw(ethers.parseEther("2")))
+      .to.be.revertedWith("insufficient funds");
 
 
-         
+
 
        
 
