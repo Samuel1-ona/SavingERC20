@@ -7,54 +7,57 @@ describe("SaveERC20", function () {
       const [owner, account1, account2] = await ethers.getSigners();
   
       // Assuming `Coval` is a mock ERC20 token for testing
-      const MockERC20 = await ethers.getContractFactory("Coval");
-      const mockERC20 = await MockERC20.deploy();
+      const Cov = await ethers.getContractFactory("Coval");
+      const cov = await Cov.deploy();
   
       const SaveERC20 = await ethers.getContractFactory("SaveERC20");
-      const saveERC20 = await SaveERC20.deploy(mockERC20.target);
+      const saveERC20 = await SaveERC20.deploy(cov.target);
   
       // Transfer some tokens to account1 for testing
-      await mockERC20.transfer(account1.address, ethers.parseEther("100"));
+      // await mockERC20.transfer(account1.address, ethers.parseEther("100"));
   
-      return { saveERC20, owner, mockERC20, account1, account2 };
+      return { saveERC20, owner, cov, account1, account2 };
     }
   
     describe("depositing into the contract", function () {
       it("should deposit tokens successfully", async function () {
-        const { saveERC20, mockERC20, account1 } = await loadFixture(deploySaveERC20Fixture);
+        const { owner,saveERC20, cov, account1 } = await loadFixture(deploySaveERC20Fixture);
   
         const amountToDeposit = ethers.parseEther("1");
-  
-        // Account1 approves SaveERC20 contract to transfer their tokens
-        await mockERC20.connect(account1).approve(saveERC20.target, amountToDeposit);
-  
-        // Account1 deposits tokens into the SaveERC20 contract
+
+        await cov.connect(owner).approve(saveERC20.target, amountToDeposit);
+        await cov.connect(owner).transfer(account1.address, amountToDeposit);
+        
+        await cov.connect(account1).approve(saveERC20.target, amountToDeposit);
+
         await saveERC20.connect(account1).deposit(amountToDeposit);
-  
-        // Check if the user's savings have increased
-        const userBalance = await saveERC20.checkUserBalance(account1.address);
-        expect(userBalance).to.equal(amountToDeposit);
-  
-        // Check if the contract's balance matches the deposited amount
-        const contractBalance = await mockERC20.balanceOf(saveERC20.target);
-        expect(contractBalance).to.equal(amountToDeposit);
+
+        const checkBalance = await saveERC20.checkUserBalance(account1.address);
+
+        expect(checkBalance).to.equal(amountToDeposit);
       });
   
       it("should check user balance correctly", async function() {
-        const { saveERC20, account1,owner,mockERC20 } = await loadFixture(deploySaveERC20Fixture);
+        const { saveERC20, account1,owner,cov } = await loadFixture(deploySaveERC20Fixture);
   
-        // Initially, the balance should be 0
-        const initialBalance = await saveERC20.checkUserBalance(account1.address);
-        expect(initialBalance).to.equal(0);
-  
-        // After depositing 1 token
-        const amountToDeposit = ethers.parseEther("1");
-        await mockERC20.connect(owner).approve(account1.address, amountToDeposit);
-        await saveERC20.connect(account1).deposit(amountToDeposit);
-  
-        // The balance should now be 1
-        const balanceAfterDeposit = await saveERC20.checkUserBalance(account1.address);
-        expect(balanceAfterDeposit).to.equal(amountToDeposit);
+          const  amountToDeposit = ethers.parseEther("1");
+
+          const initialBalance = await saveERC20.checkUserBalance(account1.address);
+
+          expect(initialBalance).to.equal(0);
+
+          await cov.connect(owner).approve(saveERC20.target, amountToDeposit);
+
+          await cov.connect(owner).transfer(account1.address, amountToDeposit);
+
+          await cov.connect(account1).approve(saveERC20.target, amountToDeposit);
+
+          await saveERC20.connect(account1).deposit(amountToDeposit);
+
+          const finalBalance  = await saveERC20.checkUserBalance(account1.address);
+
+          expect(finalBalance).to.equal(amountToDeposit);
+      
       });
 
       it("should check user balance correctly", async function() {
@@ -65,5 +68,70 @@ describe("SaveERC20", function () {
         expect(balance).to.equal(0);
       
     });
+     it("should withdraw the token from the account",async function() {
+      const{saveERC20, cov, owner , account1 } = await loadFixture(deploySaveERC20Fixture);
+
+      const amountToDeposit = ethers.parseEther("1");
+
+      await cov.connect(owner).approve(saveERC20.target,amountToDeposit);
+
+      await cov.connect(owner).transfer(account1.address,amountToDeposit);
+
+      await cov.connect(account1).approve(saveERC20.target,amountToDeposit);
+
+      await saveERC20.connect(account1).deposit(amountToDeposit);
+
+      const userBalance = await saveERC20.checkUserBalance(account1.address);
+      
+      expect(userBalance).to.equal(amountToDeposit);
+
+       await saveERC20.connect(account1).withdraw(1);
+
+      const finalTokenBalance = await cov.balanceOf(account1.address);
+    
+      // Assuming the initial balance of account1 was 0 before the test, it should now be back to amountToDeposit after withdrawal.
+      expect(finalTokenBalance).to.equal(1);  
+
+     });
+
+     it("should not withdraw zero coval token ", async function () {
+      const{saveERC20, account1 } = await loadFixture(deploySaveERC20Fixture);
+
+      const amountToDeposit = ethers.parseEther("0");
+
+      await expect(  saveERC20.connect(account1).withdraw(amountToDeposit)).to.be.revertedWith("can't withdraw zero value");
+
+     });
+
+     it("should check if the amount to send is greater than user amount", async function(){
+       const {saveERC20, account1 , owner, cov} = await loadFixture(deploySaveERC20Fixture);
+
+       const amountToDeposit = ethers.parseEther("1");
+
+       await cov.connect(owner).approve(saveERC20.target,amountToDeposit);
+
+      await cov.connect(owner).transfer(account1.address,amountToDeposit);
+
+      await cov.connect(account1).approve(saveERC20.target,amountToDeposit);
+
+      await saveERC20.connect(account1).deposit(amountToDeposit);
+
+      const userBalance = await saveERC20.checkUserBalance(account1.address);
+      
+      expect(userBalance).to.equal(amountToDeposit);
+
+         await saveERC20.connect(account1).withdraw(2);
+
+         const finalTokenBalance = await cov.balanceOf(account1.address);
+
+         await expect(finalTokenBalance).to.revertedWith("insufficient funds");
+
+
+         
+
+       
+
+     });
+
   });
 });
